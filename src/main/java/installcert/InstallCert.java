@@ -39,12 +39,15 @@
 
 package installcert;
 
-import javax.net.ssl.*;
 import java.io.*;
 import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.net.ssl.*;
 
 /**
  * Class used to add the server's certificate to the KeyStore
@@ -56,6 +59,21 @@ public class InstallCert {
         String host;
         int port;
         char[] passphrase;
+        String filename = "jssecacerts";
+        List<String> argList = new ArrayList<String>();
+        for (int i = 0; i < args.length; i++) {
+            String arg = args[i];
+            if ("-f".equals(arg)) {
+                if (i == args.length - 1) {
+                    System.err.println("Missing filename of -f option.");
+                    System.exit(1);
+                }
+                filename = args[++i];
+            } else {
+                argList.add(arg);
+            }
+        }
+        args = argList.toArray(new String[argList.size()]);
         if ((args.length == 1) || (args.length == 2)) {
             String[] c = args[0].split(":");
             host = c[0];
@@ -63,11 +81,11 @@ public class InstallCert {
             String p = (args.length == 1) ? "changeit" : args[1];
             passphrase = p.toCharArray();
         } else {
-            System.out.println("Usage: java InstallCert host[:port] [passphrase]");
+            System.out.println("Usage: InstallCert [-f certFile] host[:port] [passphrase]");
             return;
         }
 
-        File file = new File("jssecacerts");
+        File file = new File(filename);
         if (file.isFile() == false) {
             char SEP = File.separatorChar;
             File dir = new File(System.getProperty("java.home") + SEP
@@ -89,7 +107,7 @@ public class InstallCert {
         tmf.init(ks);
         X509TrustManager defaultTrustManager = (X509TrustManager) tmf.getTrustManagers()[0];
         SavingTrustManager tm = new SavingTrustManager(defaultTrustManager);
-        context.init(null, new TrustManager[]{tm}, null);
+        context.init(null, new TrustManager[] { tm }, null);
         SSLSocketFactory factory = context.getSocketFactory();
 
         System.out.println("Opening connection to " + host + ":" + port + "...");
